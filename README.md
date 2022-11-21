@@ -1,2 +1,2 @@
 # TableGame
-For table oriented games.
+For table oriented games... with USDT deposit.
