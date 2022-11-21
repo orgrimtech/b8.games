@@ -1,6 +1,7 @@
 // Right click on the script name and hit "Run" to execute
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+import Web3 from 'web3';
 
 describe("TableGame", function () {
   describe("- Deployment", function () {
@@ -33,7 +34,7 @@ describe("TableGame", function () {
   });
 
   describe("- Regular In&Out", function () {
-    it("test regular join and checkout.", async function () {
+    it("test regular three players join and checkout.", async function () {
       const [owner, organizer, player1, player2] = await ethers.getSigners();
 		  const mesoTokenFactory = (await ethers.getContractFactory("MesoToken"));
 		  mesoToken = await mesoTokenFactory.deploy(ethers.utils.parseEther((1000).toString()));
@@ -42,7 +43,34 @@ describe("TableGame", function () {
       await table.deployed();
       console.log('TableGame deployed at:'+ table.address)
       expect((await table.getAccumulatedBalance()).toNumber()).to.equal(0);
-      await table.connect(organizer.address).joinTableWithDeposit(20, "dafsd");
+      const web3 = new Web3();
+      let signature = await web3.eth.personal.sign(
+          "" + table.address + organizer.address + "100" + "joinTableWithDeposit", organizer
+      );
+      await table.connect(organizer.address).joinTableWithDeposit(100, signature);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + player1.address + "20" + "joinTableWithDeposit", player1
+      );
+      await table.connect(player1.address).joinTableWithDeposit(20, signature);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + player2.address + "30" + "joinTableWithDeposit", player2
+      );
+      await table.connect(player2.address).joinTableWithDeposit(30, signature);
+      expect((await table.getAccumulatedBalance()).toNumber()).to.equal(150);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + player1.address + "15" + "checkOutWithSettlement", player1
+      );
+      await table.connect(player1.address).checkOutWithSettlement(15, signature);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + player2.address + "20" + "checkOutWithSettlement", player2
+      );
+      await table.connect(player2.address).checkOutWithSettlement(20, signature);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + organizer.address + "110" + "checkOutWithSettlement", organizer
+      );
+      await table.connect(organizer.address).checkOutWithSettlement(110, signature);
+      expect((await mesoToken.balanceOf(owner.address)).toNumber()).to.equal(5);
+      expect((await table.getAccumulatedBalance()).toNumber()).to.equal(0);
     });
   });
 });
