@@ -218,6 +218,7 @@ contract TableGame {
     using ECDSA for bytes32;
     address private _token;
     address private _owner;
+    address private _beneficiary;
     address private _host = address(0);
     uint playerTotal = 0;
     uint256 tableBalance = 0;
@@ -292,9 +293,10 @@ contract TableGame {
     /**
      * @dev Initializes with a token address and contract owner.
      */
-    constructor(address tokenAddress, address owner) {
+    constructor(address tokenAddress, address owner, address beneficiary) {
         _token = tokenAddress;
         _owner = owner;
+        _beneficiary = beneficiary;
     }
 
     /**
@@ -334,10 +336,10 @@ contract TableGame {
             uint256 remaining = tableBalance; // Remaining settlements.
             if (tableBalance > 0) {
                 tableBalance = 0;
-                IERC20(_token).transfer(_owner, remaining);
+                IERC20(_token).transfer(_beneficiary, remaining);
             }
             emit TableClosed(address(this), _owner, remaining);
-            selfdestruct(payable(_owner)); // Destory contract to close table completely.
+            selfdestruct(payable(_beneficiary)); // Destory contract to close table completely.
         }
     }
 
@@ -348,7 +350,7 @@ contract TableGame {
         require(tableBalance >= _amount, "table balance is not suffcient for settlement.");
         usersDeposits[msg.sender] = 0;
         tableBalance -= _amount;
-        playerTotal --;
+        playerTotal--;
         IERC20(_token).transfer(msg.sender, _amount);
         emit PlayerCheckedOut(msg.sender, _amount);
         _closeTableIfNessary();
@@ -361,8 +363,8 @@ contract TableGame {
         require(tableBalance >= _amount + _profit, "table balance is not suffcient for settlement + profit.");
         usersDeposits[msg.sender] = 0;
         tableBalance -= _amount + _profit;
-        playerTotal --;
-        IERC20(_token).transfer(_owner, _profit);
+        playerTotal--;
+        IERC20(_token).transfer(_beneficiary, _profit);
         IERC20(_token).transfer(msg.sender, _amount);
         emit HostCheckedOut(msg.sender, _amount, _profit);
         _closeTableIfNessary();
@@ -387,21 +389,21 @@ contract TableGame {
     /**
      * @dev Returns the accumulated balance of the contract.
      */
-    function getAccumulatedBalance() public onlyOwner view returns(uint256) {
+    function getAccumulatedBalance() public view returns(uint256) {
         return tableBalance;
     }
 
     /**
      * @dev Returns the balance of the contract.
      */
-    function getContractBalance() public onlyOwner view returns(uint256) {
+    function getContractBalance() public view returns(uint256) {
         return IERC20(_token).balanceOf(address(this));
     }
 
     /**
      * @dev Returns if the table has host and some balance.
      */
-    function isTableReady() public onlyOwner view returns(bool) {
+    function isTableReady() public view returns(bool) {
         return tableBalance > 0 && _host != address(0);
     }
 
@@ -473,22 +475,24 @@ contract TableGame {
 
 contract TableGameFactory{
     address private _owner;
+    address private _beneficiary;
 
     /// @dev This event is fired when a new game is created.
     event TableGameCreated(address tableAddress, address creatorAddress);
 
     /**
-     * @dev Initializes the factory contract setting the deployer as the initial owner.
+     * @dev Initializes the factory contract with a input owner or the deployer as owner.
      */
-    constructor() {
+    constructor(address beneficiary) {
         _owner = msg.sender;
+        _beneficiary = beneficiary;
     }
 
     /**
      * @dev Creates a new table game instance with a tokenaddress.
      */
     function createTableGame(address tokenAddress) public returns(address) {
-        TableGame game = new TableGame(tokenAddress, _owner);
+        TableGame game = new TableGame(tokenAddress, _owner, _beneficiary);
         emit TableGameCreated(address(game), msg.sender);
         return address(game);
     }
