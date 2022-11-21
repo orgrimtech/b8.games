@@ -1,2 +1,2 @@
 # TableGame
-For table oriented games. script
+For table oriented games.
