@@ -222,6 +222,7 @@ contract TableGame {
     address private _host = address(0);
     uint playerTotal = 0;
     uint256 tableBalance = 0;
+    uint256 nonce = 0;
     mapping(address => uint) private usersDeposits;
 
     /**
@@ -410,12 +411,14 @@ contract TableGame {
     /**
      * @dev Generates the message hash for player + amount.
      */
-    function _genPlayerAmountHashMessage(uint256 _amount, string memory _action) private view returns (bytes32) {
+    function _genPlayerAmountHashMessage(uint256 _amount, string memory _action) internal returns (bytes32) {
+        nonce++;
         bytes memory encodedMessage = bytes(string(abi.encodePacked(
             Strings.toHexString(address(this)),
             Strings.toHexString(msg.sender),
             Strings.toString(_amount),
-            _action
+            _action,
+            Strings.toString(nonce - 1)
         )));
         return ECDSA.toEthSignedMessageHash(encodedMessage);
     }
@@ -423,13 +426,15 @@ contract TableGame {
     /**
      * @dev Generates the message hash for host + amount + profit.
      */
-    function _genHostAmountProfitHashMessage(uint256 _amount, uint256 _profit, string memory _action) private view returns (bytes32) {
+    function _genHostAmountProfitHashMessage(uint256 _amount, uint256 _profit, string memory _action) internal returns (bytes32) {
+        nonce++;
         bytes memory encodedMessage = bytes(string(abi.encodePacked(
             Strings.toHexString(address(this)),
             Strings.toHexString(msg.sender),
             Strings.toString(_amount),
             Strings.toString(_profit),
-            _action
+            _action,
+            Strings.toString(nonce - 1)
         )));
         return ECDSA.toEthSignedMessageHash(encodedMessage);
     }

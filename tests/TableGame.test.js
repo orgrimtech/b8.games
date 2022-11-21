@@ -11,6 +11,7 @@ describe("TableGame", function () {
   let _host;
   let _player1;
   let _player2;
+  let _nonce;
 
   /*
   Helpers for global funcs.
@@ -32,14 +33,16 @@ describe("TableGame", function () {
   }
 
   async function genSigAmount(contractAddress, playerAddress, amount, action) {
-    let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + action;
+    let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + action + _nonce.toString();
+    _nonce++;
     console.log("Generating Sig for " + message);
     console.log("Hashed message:" + ethers.utils.hashMessage(message));
     return await _owner._signer._legacySignMessage(message);
   }
 
   async function genSigAmountProfit(contractAddress, playerAddress, amount, profit, action) {
-    let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + profit.toString() + action;
+    let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + profit.toString() + action + _nonce.toString();
+    _nonce++;
     console.log("Generating Sig for " + message);
     console.log("Hashed message:" + ethers.utils.hashMessage(message));
     return await _owner._signer._legacySignMessage(message);
@@ -118,6 +121,7 @@ describe("TableGame", function () {
     _host = host;
     _player1 = player1;
     _player2 = player2;
+    _nonce = 0;
     _factoryContract = await deployTableGameFactoryContract();
     _meso = await deployMesoToken();
   });
@@ -160,7 +164,7 @@ describe("TableGame", function () {
       await verifyTableAmount(table, 300);
       await expect(
         joinTableWithDepositAsPlayer(table, _player2, 300)
-      ).to.be.revertedWith("ERC20: insufficient allowance");
+      ).to.be.revertedWith("ERC20: insufficient allowance");_nonce--;
       await verifyTableAmount(table, 300);
       await joinTableWithDepositAsPlayer(table, _player2, 100);
       await verifyTableAmount(table, 400);
@@ -168,12 +172,12 @@ describe("TableGame", function () {
       await verifyTableAmount(table, 350);
       await expect(
         checkOutWithSettlementAsPlayer(table, _player1, 50)
-      ).to.be.revertedWith("Player: caller is not on table.");
+      ).to.be.revertedWith("Player: caller is not on table.");_nonce--;
       await checkOutWithSettlementAsHost(table, _host, 150, 50);
       await verifyTableAmount(table, 150);
       await expect(
         checkOutWithSettlementAsPlayer(table, _player2, 150)
-      ).to.emit(table, "TableClosed")
+      ).to.emit(table, "TableClosed");_nonce--;
       await verifyTokenAmount(_beneficiary, 50);
     });
   });
