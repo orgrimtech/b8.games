@@ -11,7 +11,7 @@ describe("TableGame", function () {
   let _host;
   let _player1;
   let _player2;
-  let _nonce;
+  let _userNonces;
 
   /*
   Helpers for global funcs.
@@ -33,16 +33,18 @@ describe("TableGame", function () {
   }
 
   async function genSigAmount(contractAddress, playerAddress, amount, action) {
-    let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + action + _nonce.toString();
-    _nonce++;
+    const nonce = _userNonces.get(playerAddress);
+    _userNonces.set(playerAddress, nonce + 1);
+    let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + action + nonce.toString();
     console.log("Generating Sig for " + message);
     console.log("Hashed message:" + ethers.utils.hashMessage(message));
     return await _owner._signer._legacySignMessage(message);
   }
 
   async function genSigAmountProfit(contractAddress, playerAddress, amount, profit, action) {
-    let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + profit.toString() + action + _nonce.toString();
-    _nonce++;
+    const nonce = _userNonces.get(playerAddress);
+    _userNonces.set(playerAddress, nonce + 1);
+    let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + profit.toString() + action + nonce.toString();
     console.log("Generating Sig for " + message);
     console.log("Hashed message:" + ethers.utils.hashMessage(message));
     return await _owner._signer._legacySignMessage(message);
@@ -74,7 +76,6 @@ describe("TableGame", function () {
   }
 
   async function verifyTokenAmount(someone, amount) {
-    console.dir(someone);
     console.log("Expecting token balance of " + someone.address + " to be " + amount);
     expect((await _meso.connect(someone).balanceOf(someone.address)).toNumber()).to.equal(amount);
   }
@@ -121,7 +122,7 @@ describe("TableGame", function () {
     _host = host;
     _player1 = player1;
     _player2 = player2;
-    _nonce = 0;
+    _userNonces = new Map();
     _factoryContract = await deployTableGameFactoryContract();
     _meso = await deployMesoToken();
   });
@@ -149,6 +150,13 @@ describe("TableGame", function () {
   });
 
   describe("- Regular In&Out", function () {
+    beforeEach(async function () {
+      _userNonces.clear();
+      _userNonces.set(_host.address, 0);
+      _userNonces.set(_player1.address, 0);
+      _userNonces.set(_player2.address, 0);
+    });
+
     it("test regular join and checkout, the happy path.", async function () {
       await _meso.transfer(_host.address, 500);
       await _meso.transfer(_player1.address, 500);
@@ -164,7 +172,8 @@ describe("TableGame", function () {
       await verifyTableAmount(table, 300);
       await expect(
         joinTableWithDepositAsPlayer(table, _player2, 300)
-      ).to.be.revertedWith("ERC20: insufficient allowance");_nonce--;
+      ).to.be.revertedWith("ERC20: insufficient allowance");
+      _userNonces.set(_player2.address, _userNonces.get(_player2.address) - 1);
       await verifyTableAmount(table, 300);
       await joinTableWithDepositAsPlayer(table, _player2, 100);
       await verifyTableAmount(table, 400);
@@ -172,12 +181,14 @@ describe("TableGame", function () {
       await verifyTableAmount(table, 350);
       await expect(
         checkOutWithSettlementAsPlayer(table, _player1, 50)
-      ).to.be.revertedWith("Player: caller is not on table.");_nonce--;
+      ).to.be.revertedWith("Player: caller is not on table.");
+      _userNonces.set(_player1.address, _userNonces.get(_player1.address) - 1);
       await checkOutWithSettlementAsHost(table, _host, 150, 50);
       await verifyTableAmount(table, 150);
       await expect(
         checkOutWithSettlementAsPlayer(table, _player2, 150)
-      ).to.emit(table, "TableClosed");_nonce--;
+      ).to.emit(table, "TableClosed");
+      _userNonces.set(_player2.address, _userNonces.get(_player2.address) - 1);
       await verifyTokenAmount(_beneficiary, 50);
     });
   });
