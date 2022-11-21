@@ -361,18 +361,25 @@ contract TableGameFactory{
     }
 
     /**
-     * @dev Creates a new table game instance with USDT on ETH token.
+     * @dev Creates a new table game instance with USDT token on ETH.
      */
     function createTableGameUSDTOnETH() public returns(address) {
-        address USDT_On_ETH = 0x55d398326f99059fF775485246999027B3197955;
+        address USDT_On_ETH = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
         return createTableGame(USDT_On_ETH);
     }
-
+  
     /**
-     * @dev Creates a new table game instance with USDC on Goerli token.
+     * @dev Creates a new table game instance with USDC token on Goerli.
      */
     function createTableGameUSDCOnGoerli() public returns(address) {
         address USDC_On_Goerli = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
         return createTableGame(USDC_On_Goerli);
+    }
+    /**
+     * @dev Creates a new table game instance with USDT token on BSC.
+     */
+    function createTableGameUSDTOnBSC() public returns(address) {
+        address USDT_On_BSC = 0x55d398326f99059fF775485246999027B3197955;
+        return createTableGame(USDT_On_BSC);
     }
 }

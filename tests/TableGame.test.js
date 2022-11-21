@@ -73,17 +73,28 @@ describe("TableGame", function () {
     return await ethers.getContractAt("TableGame", tx.events[0].args[0]);
   }
 
+  async function deployFactoryContractUSDTOnBSC() {
+    const game = await factoryContract.createTableGameUSDTOnBSC();
+    const tx = await game.wait();
+    console.log("TableGame USDTOnBSC created at:" + tx.events[0].args[0]);
+    return await ethers.getContractAt("TableGame", tx.events[0].args[0]);
+  }
+
   before(async function () {
     factoryContract = await deployTableGameFactoryContract();
   });
 
   describe("- Deployment", function () {
-    it("test initial value with USDT address.", async function () {
+    it("test initial value with USDT on ETH address.", async function () {
       const table = await deployFactoryContractUSDTOnETH();
       await verifyTableAmount(table, 0);
     });
-    it("test initial value with USDC address.", async function () {
+    it("test initial value with USDC on Goerli address.", async function () {
       const table = await deployFactoryContractUSDCOnGoerli();
+      await verifyTableAmount(table, 0);
+    });
+    it("test initial value with USDT on BSC address.", async function () {
+      const table = await deployFactoryContractUSDTOnBSC();
       await verifyTableAmount(table, 0);
     });
   });
