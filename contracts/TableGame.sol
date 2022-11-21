@@ -220,16 +220,16 @@ contract TableGame {
     address private _owner;
     address private _beneficiary;
     address private _host = address(0);
-    uint playerTotal = 0;
-    uint256 tableBalance = 0;
-    uint256 nonce = 0;
-    mapping(address => uint) private usersDeposits;
+    uint private _playerTotal = 0;
+    uint256 private _tableBalance = 0;
+    uint256 private _nonce;
+    mapping(address => uint) private _usersDeposits;
 
     /**
      * @dev Throws if caller is not on table.
      */
     modifier onlyOnTable() {
-        require(usersDeposits[msg.sender] > 0, "Player: caller is not on table.");
+        require(_usersDeposits[msg.sender] > 0, "Player: caller is not on table.");
         _;
     }
 
@@ -306,11 +306,11 @@ contract TableGame {
     function _joinTableWithDeposit(uint256 _amount, bytes memory _signature) private {
         verifyServerHashAmount(_amount, "joinTableWithDeposit", _signature);
         IERC20(_token).transferFrom(msg.sender, address(this), _amount);
-        if (usersDeposits[msg.sender] == 0) {
-            playerTotal ++;
+        if (_usersDeposits[msg.sender] == 0) {
+            _playerTotal ++;
         }
-        usersDeposits[msg.sender] += _amount;
-        tableBalance += _amount;
+        _usersDeposits[msg.sender] += _amount;
+        _tableBalance += _amount;
     }
 
     /**
@@ -333,10 +333,10 @@ contract TableGame {
      * @dev Someone checkout with final settlement.
      */
     function _closeTableIfNessary() private {
-        if (playerTotal == 0) { // Table closing nessary.
-            uint256 remaining = tableBalance; // Remaining settlements.
-            if (tableBalance > 0) {
-                tableBalance = 0;
+        if (_playerTotal == 0) { // Table closing nessary.
+            uint256 remaining = _tableBalance; // Remaining settlements.
+            if (_tableBalance > 0) {
+                _tableBalance = 0;
                 IERC20(_token).transfer(_beneficiary, remaining);
             }
             emit TableClosed(address(this), _owner, remaining);
@@ -348,10 +348,10 @@ contract TableGame {
      * @dev Someone checkout with final settlement.
      */
     function _checkOutWithSettlement(uint256 _amount) private {
-        require(tableBalance >= _amount, "table balance is not suffcient for settlement.");
-        usersDeposits[msg.sender] = 0;
-        tableBalance -= _amount;
-        playerTotal--;
+        require(_tableBalance >= _amount, "table balance is not suffcient for settlement.");
+        _usersDeposits[msg.sender] = 0;
+        _tableBalance -= _amount;
+        _playerTotal--;
         IERC20(_token).transfer(msg.sender, _amount);
         emit PlayerCheckedOut(msg.sender, _amount);
         _closeTableIfNessary();
@@ -361,10 +361,10 @@ contract TableGame {
      * @dev Settlement to owner.
      */
     function _checkOutWithSettlementandProfit(uint256 _amount, uint256 _profit) private {
-        require(tableBalance >= _amount + _profit, "table balance is not suffcient for settlement + profit.");
-        usersDeposits[msg.sender] = 0;
-        tableBalance -= _amount + _profit;
-        playerTotal--;
+        require(_tableBalance >= _amount + _profit, "table balance is not suffcient for settlement + profit.");
+        _usersDeposits[msg.sender] = 0;
+        _tableBalance -= _amount + _profit;
+        _playerTotal--;
         IERC20(_token).transfer(_beneficiary, _profit);
         IERC20(_token).transfer(msg.sender, _amount);
         emit HostCheckedOut(msg.sender, _amount, _profit);
@@ -391,7 +391,7 @@ contract TableGame {
      * @dev Returns the accumulated balance of the contract.
      */
     function getAccumulatedBalance() public view returns(uint256) {
-        return tableBalance;
+        return _tableBalance;
     }
 
     /**
@@ -405,20 +405,20 @@ contract TableGame {
      * @dev Returns if the table has host and some balance.
      */
     function isTableReady() public view returns(bool) {
-        return tableBalance > 0 && _host != address(0);
+        return _tableBalance > 0 && _host != address(0);
     }
 
     /**
      * @dev Generates the message hash for player + amount.
      */
     function _genPlayerAmountHashMessage(uint256 _amount, string memory _action) internal returns (bytes32) {
-        nonce++;
+        _nonce++;
         bytes memory encodedMessage = bytes(string(abi.encodePacked(
             Strings.toHexString(address(this)),
             Strings.toHexString(msg.sender),
             Strings.toString(_amount),
             _action,
-            Strings.toString(nonce - 1)
+            Strings.toString(_nonce - 1)
         )));
         return ECDSA.toEthSignedMessageHash(encodedMessage);
     }
@@ -427,14 +427,14 @@ contract TableGame {
      * @dev Generates the message hash for host + amount + profit.
      */
     function _genHostAmountProfitHashMessage(uint256 _amount, uint256 _profit, string memory _action) internal returns (bytes32) {
-        nonce++;
+        _nonce++;
         bytes memory encodedMessage = bytes(string(abi.encodePacked(
             Strings.toHexString(address(this)),
             Strings.toHexString(msg.sender),
             Strings.toString(_amount),
             Strings.toString(_profit),
             _action,
-            Strings.toString(nonce - 1)
+            Strings.toString(_nonce - 1)
         )));
         return ECDSA.toEthSignedMessageHash(encodedMessage);
     }
