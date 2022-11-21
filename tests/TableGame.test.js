@@ -22,7 +22,7 @@ async function deployMesoToken() {
   return contract;
 }
 
-async function genSig(contractAddress, playerAddress, amount, action) {
+async function genSigAmount(contractAddress, playerAddress, amount, action) {
   const [owner] = await ethers.getSigners();
   let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + action;
   console.log("Generating Sig for " + message);
@@ -30,14 +30,32 @@ async function genSig(contractAddress, playerAddress, amount, action) {
   return await owner._signer._legacySignMessage(message);
 }
 
-async function joinTableWithDeposit(tableGame, player, amount) {
-  let signature = await genSig(tableGame.address, player.address, amount, "joinTableWithDeposit");
-  return await tableGame.connect(player).joinTableWithDeposit(amount, signature);
+async function genSigAmountProfit(contractAddress, playerAddress, amount, profit, action) {
+  const [owner] = await ethers.getSigners();
+  let message = contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + profit.toString() + action;
+  console.log("Generating Sig for " + message);
+  console.log("Hashed message:" + ethers.utils.hashMessage(message));
+  return await owner._signer._legacySignMessage(message);
 }
 
-async function checkOutWithSettlement(tableGame, player, amount) {
-  let signature = await genSig(tableGame.address, player.address, amount, "checkOutWithSettlement");
-  return await tableGame.connect(player).checkOutWithSettlement(amount, signature);
+async function joinTableWithDepositAsPlayer(tableGame, player, amount) {
+  let signature = await genSigAmount(tableGame.address, player.address, amount, "joinTableWithDeposit");
+  return await tableGame.connect(player).joinTableWithDepositAsPlayer(amount, signature);
+}
+
+async function joinTableWithDepositAsHost(tableGame, host, amount) {
+  let signature = await genSigAmount(tableGame.address, host.address, amount, "joinTableWithDeposit");
+  return await tableGame.connect(host).joinTableWithDepositAsHost(amount, signature);
+}
+
+async function checkOutWithSettlementAsPlayer(tableGame, player, amount) {
+  let signature = await genSigAmount(tableGame.address, player.address, amount, "checkOutWithSettlement");
+  return await tableGame.connect(player).checkOutWithSettlementAsPlayer(amount, signature);
+}
+
+async function checkOutWithSettlementAsHost(tableGame, host, amount, profit) {
+  let signature = await genSigAmountProfit(tableGame.address, host.address, amount, profit, "checkOutWithSettlement");
+  return await tableGame.connect(host).checkOutWithSettlementAsHost(amount, profit, signature);
 }
 
 async function verifyTableAmount(tableGame, amount) {
@@ -111,26 +129,34 @@ describe("TableGame", function () {
   });
 
   describe("- Regular In&Out", function () {
-    it("test regular join and checkout.", async function () {
-      const [owner, organizer, player1, player2] = await ethers.getSigners();
+    it("test regular join and checkout, the happy path.", async function () {
+      const [owner, host, player1, player2] = await ethers.getSigners();
       const meso = await deployMesoToken();
-      await meso.transfer(organizer.address, 500);
+      await meso.transfer(host.address, 500);
       await meso.transfer(player1.address, 500);
       await meso.transfer(player2.address, 500);
       const table = await createTableGame(meso.address);
-      await meso.connect(organizer).approve(table.address, 300);
+      await meso.connect(host).approve(table.address, 300);
       await meso.connect(player1).approve(table.address, 200);
       await meso.connect(player2).approve(table.address, 100);
       await verifyTableAmount(table, 0);
-      await joinTableWithDeposit(table, organizer, 100);
+      await joinTableWithDepositAsHost(table, host, 100);
       await verifyTableAmount(table, 100);
-      await joinTableWithDeposit(table, player1, 200);
+      await joinTableWithDepositAsPlayer(table, player1, 200);
       await verifyTableAmount(table, 300);
       await expect(
-        joinTableWithDeposit(table, player2, 300)
+        joinTableWithDepositAsPlayer(table, player2, 300)
       ).to.be.revertedWith("ERC20: insufficient allowance");
-      await checkOutWithSettlement(table, player1, 250);
-      await verifyTableAmount(table, 50);
+      await verifyTableAmount(table, 300);
+      await joinTableWithDepositAsPlayer(table, player2, 100);
+      await verifyTableAmount(table, 400);
+      await checkOutWithSettlementAsPlayer(table, player1, 50);
+      await verifyTableAmount(table, 350);
+      await checkOutWithSettlementAsHost(table, host, 150, 50);
+      await verifyTableAmount(table, 150);
+      await expect(
+        checkOutWithSettlementAsPlayer(table, player2, 150)
+      ).to.emit(table, "TableClosed")
     });
   });
 });
