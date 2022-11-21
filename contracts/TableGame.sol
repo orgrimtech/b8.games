@@ -79,6 +79,7 @@ library Math {
  */
 library Strings {
     bytes16 private constant _SYMBOLS = "0123456789abcdef";
+    uint8 private constant _ADDRESS_LENGTH = 20;
 
     function toString(uint256 value) internal pure returns (string memory) {
         unchecked {
@@ -100,6 +101,22 @@ library Strings {
             }
             return buffer;
         }
+    }
+
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length + 2);
+        buffer[0] = "0";
+        buffer[1] = "x";
+        for (uint256 i = 2 * length + 1; i > 1; --i) {
+            buffer[i] = _SYMBOLS[value & 0xf];
+            value >>= 4;
+        }
+        require(value == 0, "Strings: hex length insufficient");
+        return string(buffer);
+    }
+
+    function toHexString(address addr) internal pure returns (string memory) {
+        return toHexString(uint256(uint160(addr)), _ADDRESS_LENGTH);
     }
 }
 
@@ -240,11 +257,11 @@ contract TableGame {
     );
 
     /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
+     * @dev Initializes with a token address and contract owner.
      */
-    constructor(address tokenAddress) {
+    constructor(address tokenAddress, address owner) {
         _token = tokenAddress;
-        _owner = msg.sender;
+        _owner = owner;
     }
 
     /**
@@ -282,33 +299,30 @@ contract TableGame {
     }
 
     /**
-     * @dev Return the accumulated balance of the contract.
+     * @dev Returns the accumulated balance of the contract.
      */
     function getAccumulatedBalance() public onlyOwner view returns(uint256) {
         return tableBalance;
     }
 
     /**
-     * @dev Return the balance of the contract.
+     * @dev Returns the balance of the contract.
      */
     function getContractBalance() public onlyOwner view returns(uint256) {
         return IERC20(_token).balanceOf(address(this));
     }
 
     /**
-     * @dev Verify that the server hash is valid.
+     * @dev Verifies that the server hash is valid.
      */
-    function verifyServerHash(uint _amount, string memory _action, bytes memory _signature) internal {
-        // Validates the hash data was actually signed from 'server' side.
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                address(this),
-                msg.sender,
-                _amount,
-                _action
-            )
-        );
-        bytes32 messageHash = hash.toEthSignedMessageHash();
+    function verifyServerHash(uint256 _amount, string memory _action, bytes memory _signature) internal {
+        bytes memory encodedMessage = bytes(string(abi.encodePacked(
+            Strings.toHexString(address(this)),
+            Strings.toHexString(msg.sender),
+            Strings.toString(_amount),
+            _action
+        )));
+        bytes32 messageHash = ECDSA.toEthSignedMessageHash(encodedMessage);
         address signer = messageHash.recover(_signature);
         if (signer != _owner) {
             emit ServerHashValidationFailure(
@@ -323,10 +337,42 @@ contract TableGame {
     }
 }
 
-contract TableGame_USDT_ETH is TableGame {
-    constructor() TableGame(0x55d398326f99059fF775485246999027B3197955) {}
-}
 
-contract TableGame_USDC_ETH is TableGame {
-    constructor() TableGame(0x07865c6E87B9F70255377e024ace6630C1Eaa37F) {}
+contract TableGameFactory{
+    address private _owner;
+
+    /// @dev This event is fired when a new game is created.
+    event TableGameCreated(address tableAddress, address creatorAddress);
+
+    /**
+     * @dev Initializes the factory contract setting the deployer as the initial owner.
+     */
+    constructor() {
+        _owner = msg.sender;
+    }
+
+    /**
+     * @dev Creates a new table game instance with a tokenaddress.
+     */
+    function createTableGame(address tokenAddress) public returns(address) {
+        TableGame game = new TableGame(tokenAddress, _owner);
+        emit TableGameCreated(address(game), msg.sender);
+        return address(game);
+    }
+
+    /**
+     * @dev Creates a new table game instance with USDT on ETH token.
+     */
+    function createTableGameUSDTOnETH() public returns(address) {
+        address USDT_On_ETH = 0x55d398326f99059fF775485246999027B3197955;
+        return createTableGame(USDT_On_ETH);
+    }
+
+    /**
+     * @dev Creates a new table game instance with USDC on Goerli token.
+     */
+    function createTableGameUSDCOnGoerli() public returns(address) {
+        address USDC_On_Goerli = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
+        return createTableGame(USDC_On_Goerli);
+    }
 }
