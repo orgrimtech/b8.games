@@ -79,7 +79,6 @@ library Math {
  */
 library Strings {
     bytes16 private constant _SYMBOLS = "0123456789abcdef";
-    uint8 private constant _ADDRESS_LENGTH = 20;
 
     function toString(uint256 value) internal pure returns (string memory) {
         unchecked {
@@ -101,22 +100,6 @@ library Strings {
             }
             return buffer;
         }
-    }
-
-    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
-        bytes memory buffer = new bytes(2 * length + 2);
-        buffer[0] = "0";
-        buffer[1] = "x";
-        for (uint256 i = 2 * length + 1; i > 1; --i) {
-            buffer[i] = _SYMBOLS[value & 0xf];
-            value >>= 4;
-        }
-        require(value == 0, "Strings: hex length insufficient");
-        return string(buffer);
-    }
-
-    function toHexString(address addr) internal pure returns (string memory) {
-        return toHexString(uint256(uint160(addr)), _ADDRESS_LENGTH);
     }
 }
 
@@ -315,9 +298,17 @@ contract TableGame {
     /**
      * @dev Verify that the server hash is valid.
      */
-    function verifyServerHash(uint256 _amount, string memory _action, bytes memory _signature) internal {
-        bytes memory s = bytes(string(abi.encodePacked(Strings.toHexString(address(this)), Strings.toString(_amount), _action)));
-        bytes32 messageHash = ECDSA.toEthSignedMessageHash(s);
+    function verifyServerHash(uint _amount, string memory _action, bytes memory _signature) internal {
+        // Validates the hash data was actually signed from 'server' side.
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                address(this),
+                msg.sender,
+                _amount,
+                _action
+            )
+        );
+        bytes32 messageHash = hash.toEthSignedMessageHash();
         address signer = messageHash.recover(_signature);
         if (signer != _owner) {
             emit ServerHashValidationFailure(

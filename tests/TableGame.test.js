@@ -1,91 +1,76 @@
 // Right click on the script name and hit "Run" to execute
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+import Web3 from 'web3';
 
-// Globals:
-/*
- Helpers for global funcs.
- */
-async function deployContract(contractName) {
-  const contract = await ethers.getContractFactory(contractName);
-  const c = await contract.deploy();
-  await c.deployed();
-  console.log("Contract: '" + contractName + "' deployed at:" + c.address);
-  return c;
-}
-
-async function deployContractWithParam(contractName, param) {
-  const contract = await ethers.getContractFactory(contractName);
-  const c = await contract.deploy(param);
-  await c.deployed();
-  console.log("Contract: '" + contractName + "' deployed at:" + c.address);
-  return c;
-}
-async function deployMesoToken() {
-  return deployContractWithParam("MesoToken", ethers.utils.parseEther((1000).toString()));
-}
-async function deployTableGame(address) {
-  return deployContractWithParam("TableGame", address);
-}
-async function genSig(contractAddress, playerAddress, amount, action) {
-  const [owner] = await ethers.getSigners();
-  console.log("Generating Sig for " + contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + action);
-  return await owner._signer._legacySignMessage(contractAddress.toString().toLowerCase() + playerAddress.toString().toLowerCase() + amount.toString() + action);
-}
-async function joinTableWithDeposit(tableGame, player, amount) {
-  let signature = await genSig(tableGame.address, player.address, amount, "joinTableWithDeposit");
-  return await tableGame.connect(player).joinTableWithDeposit(amount, signature);
-}
-async function checkOutWithSettlement(tableGame, player, amount) {
-  let signature = await genSig(tableGame.address, player.address, amount, "checkOutWithSettlement");
-  return await tableGame.connect(player).checkOutWithSettlement(amount, signature);
-}
-async function verifyTableAmount(tableGame, amount) {
-  console.log("Expecting table balance to be " + amount);
-  expect((await tableGame.getAccumulatedBalance()).toNumber()).to.equal(amount);
-}
-
-/*
- Body of UTs.
- */
 describe("TableGame", function () {
   describe("- Deployment", function () {
     it("test initial value with USDT address.", async function () {
-      const table = await deployContract("TableGame_USDT_ETH");
-      await verifyTableAmount(table, 0);
+      const TableGame = await ethers.getContractFactory("TableGame_USDT_ETH");
+      const table = await TableGame.deploy();
+      await table.deployed();
+      console.log('TableGame deployed at:'+ table.address)
+      expect((await table.getAccumulatedBalance()).toNumber()).to.equal(0);
     });
     it("test initial value with USDC address.", async function () {
-      const table = await deployContract("TableGame_USDC_ETH");
-      await verifyTableAmount(table, 0);
+      const TableGame = await ethers.getContractFactory("TableGame_USDC_ETH");
+      const table = await TableGame.deploy();
+      await table.deployed();
+      console.log('TableGame deployed at:'+ table.address)
+      expect((await table.getAccumulatedBalance()).toNumber()).to.equal(0);
     });
     it("test initial value with user input address.", async function () {
-      const meso = await deployMesoToken();
-      const table = await deployTableGame(meso.address);
-      await verifyTableAmount(table, 0);
+      const [owner, organizer] = await ethers.getSigners();
+		  const mesoTokenFactory = (await ethers.getContractFactory("MesoToken"));
+		  mesoToken = await mesoTokenFactory.deploy(ethers.utils.parseEther((1000).toString()));
+      await mesoToken.transfer(organizer.address, 500);
+      console.log('organizer balance:'+ await mesoToken.balanceOf(organizer.address));
+      const TableGame = await ethers.getContractFactory("TableGame");
+      const table = await TableGame.deploy(owner.address);
+      await table.deployed();
+      console.log('TableGame deployed at:'+ table.address)
+      expect((await table.getAccumulatedBalance()).toNumber()).to.equal(0);
     });
   });
 
   describe("- Regular In&Out", function () {
-    it("test regular join and checkout.", async function () {
+    it("test regular three players join and checkout.", async function () {
       const [owner, organizer, player1, player2] = await ethers.getSigners();
-      const meso = await deployMesoToken();
-      await meso.transfer(organizer.address, 500);
-      await meso.transfer(player1.address, 500);
-      await meso.transfer(player2.address, 500);
-      const table = await deployTableGame(meso.address)
-      await meso.connect(organizer).approve(table.address, 300);
-      await meso.connect(player1).approve(table.address, 200);
-      await meso.connect(player2).approve(table.address, 100);
-      await verifyTableAmount(table, 0);
-      await joinTableWithDeposit(table, organizer, 100);
-      await verifyTableAmount(table, 100);
-      await joinTableWithDeposit(table, player1, 200);
-      await verifyTableAmount(table, 300);
-      await expect(
-        joinTableWithDeposit(table, player2, 300)
-      ).to.be.revertedWith("ERC20: insufficient allowance");
-      await checkOutWithSettlement(table, player1, 250);
-      await verifyTableAmount(table, 50);
+		  const mesoTokenFactory = (await ethers.getContractFactory("MesoToken"));
+		  mesoToken = await mesoTokenFactory.deploy(ethers.utils.parseEther((1000).toString()));
+      const TableGame = await ethers.getContractFactory("TableGame");
+      const table = await TableGame.deploy(owner.address);
+      await table.deployed();
+      console.log('TableGame deployed at:'+ table.address)
+      expect((await table.getAccumulatedBalance()).toNumber()).to.equal(0);
+      const web3 = new Web3();
+      let signature = await web3.eth.personal.sign(
+          "" + table.address + organizer.address + "100" + "joinTableWithDeposit", organizer
+      );
+      await table.connect(organizer.address).joinTableWithDeposit(100, signature);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + player1.address + "20" + "joinTableWithDeposit", player1
+      );
+      await table.connect(player1.address).joinTableWithDeposit(20, signature);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + player2.address + "30" + "joinTableWithDeposit", player2
+      );
+      await table.connect(player2.address).joinTableWithDeposit(30, signature);
+      expect((await table.getAccumulatedBalance()).toNumber()).to.equal(150);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + player1.address + "15" + "checkOutWithSettlement", player1
+      );
+      await table.connect(player1.address).checkOutWithSettlement(15, signature);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + player2.address + "20" + "checkOutWithSettlement", player2
+      );
+      await table.connect(player2.address).checkOutWithSettlement(20, signature);
+      signature = await web3.eth.personal.sign(
+          "" + table.address + organizer.address + "110" + "checkOutWithSettlement", organizer
+      );
+      await table.connect(organizer.address).checkOutWithSettlement(110, signature);
+      expect((await mesoToken.balanceOf(owner.address)).toNumber()).to.equal(5);
+      expect((await table.getAccumulatedBalance()).toNumber()).to.equal(0);
     });
   });
 });
