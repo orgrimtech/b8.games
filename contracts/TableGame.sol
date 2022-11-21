@@ -228,7 +228,7 @@ contract TableGame {
      * @dev Throws if caller is not on table.
      */
     modifier onlyOnTable() {
-        require(usersDeposits[msg.sender] > 0, "not on table.");
+        require(usersDeposits[msg.sender] > 0, "Player: caller is not on table.");
         _;
     }
 

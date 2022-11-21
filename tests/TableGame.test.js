@@ -166,6 +166,9 @@ describe("TableGame", function () {
       await verifyTableAmount(table, 400);
       await checkOutWithSettlementAsPlayer(table, _player1, 50);
       await verifyTableAmount(table, 350);
+      await expect(
+        checkOutWithSettlementAsPlayer(table, _player1, 50)
+      ).to.be.revertedWith("Player: caller is not on table.");
       await checkOutWithSettlementAsHost(table, _host, 150, 50);
       await verifyTableAmount(table, 150);
       await expect(
