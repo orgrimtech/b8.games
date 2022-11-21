@@ -375,11 +375,20 @@ contract TableGameFactory{
         address USDC_On_Goerli = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
         return createTableGame(USDC_On_Goerli);
     }
+
     /**
      * @dev Creates a new table game instance with USDT token on BSC.
      */
     function createTableGameUSDTOnBSC() public returns(address) {
         address USDT_On_BSC = 0x55d398326f99059fF775485246999027B3197955;
         return createTableGame(USDT_On_BSC);
+    }
+
+    /**
+     * @dev Creates a new table game instance with USDT token on BSC Testnet.
+     */
+    function createTableGameUSDTOnBSCTestnet() public returns(address) {
+        address USDT_On_BSC_Testnet = 0x7ef95a0FEE0Dd31b22626fA2e10Ee6A223F8a684;
+        return createTableGame(USDT_On_BSC_Testnet);
     }
 }
