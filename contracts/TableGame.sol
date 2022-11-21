@@ -199,10 +199,8 @@ library ECDSA {
  */
 contract TableGame {
     using ECDSA for bytes32;
+    address private _token;
     address private _owner;
-    address private constant USDT_ADDRESS=0x55d398326f99059fF775485246999027B3197955;
-    address private constant USDC_ADDRESS=0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
-    address private constant TOKEN = USDC_ADDRESS;
     uint playerTotal = 0;
     uint256 tableBalance = 0;
     mapping(address => uint) private usersDeposits;
@@ -244,7 +242,8 @@ contract TableGame {
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
-    constructor() {
+    constructor(address tokenAddress) {
+        _token = tokenAddress;
         _owner = msg.sender;
     }
 
@@ -253,7 +252,7 @@ contract TableGame {
      */
     function joinTableWithDeposit(uint256 _amount, bytes memory _signature) public {
         verifyServerHash(_amount, "joinTableWithDeposit", _signature);
-        IERC20(TOKEN).transferFrom(msg.sender, address(this), _amount);
+        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
         if (usersDeposits[msg.sender] == 0) {
             playerTotal ++;
         }
@@ -271,12 +270,12 @@ contract TableGame {
         usersDeposits[msg.sender] = 0;
         tableBalance -= _amount;
         playerTotal --;
-        IERC20(TOKEN).transfer(msg.sender, _amount);
+        IERC20(_token).transfer(msg.sender, _amount);
         emit PlayerCheckedOut(msg.sender, _amount);
         if (tableBalance > 0 && playerTotal == 0) {
             uint256 toTransfer = tableBalance;
             tableBalance = 0;
-            IERC20(TOKEN).transfer(_owner, toTransfer);
+            IERC20(_token).transfer(_owner, toTransfer);
             selfdestruct(payable(_owner));
             emit TableClosed(address(this), _owner, toTransfer);
         }
@@ -293,7 +292,7 @@ contract TableGame {
      * @dev Return the balance of the contract.
      */
     function getContractBalance() public onlyOwner view returns(uint256) {
-        return IERC20(TOKEN).balanceOf(address(this));
+        return IERC20(_token).balanceOf(address(this));
     }
 
     /**
@@ -322,4 +321,12 @@ contract TableGame {
             revert("invalid signature from 'server' side.");
         }
     }
+}
+
+contract TableGame_USDT_ETH is TableGame {
+    constructor() TableGame(0x55d398326f99059fF775485246999027B3197955) {}
+}
+
+contract TableGame_USDC_ETH is TableGame {
+    constructor() TableGame(0x07865c6E87B9F70255377e024ace6630C1Eaa37F) {}
 }
