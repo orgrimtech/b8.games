@@ -220,10 +220,19 @@ contract TableGame {
     address private _owner;
     address private _beneficiary;
     address private _host = address(0);
+    uint private _timeToCloseGame;
     uint private _playerTotal = 0;
     uint256 private _tableBalance = 0;
     mapping(address => uint256) private _usersNonces;
     mapping(address => uint256) private _usersDeposits;
+
+    /**
+     * @dev Throws if table is already closed.
+     */
+    modifier onlyGameIsStillOn() {
+        require(_timeToCloseGame > block.timestamp, "Game: game is already closed.");
+        _;
+    }
 
     /**
      * @dev Throws if caller is not on table.
@@ -294,10 +303,11 @@ contract TableGame {
     /**
      * @dev Initializes with a token address and contract owner.
      */
-    constructor(address tokenAddress, address owner, address beneficiary) {
+    constructor(address tokenAddress, address owner, address beneficiary, uint hoursToCloseGame) {
         _token = tokenAddress;
         _owner = owner;
         _beneficiary = beneficiary;
+        _timeToCloseGame = block.timestamp + hoursToCloseGame * 1 hours + 10 seconds;
     }
 
     /**
@@ -316,7 +326,7 @@ contract TableGame {
     /**
      * @dev Player joins the table with some deposit.
      */
-    function joinTableWithDepositAsPlayer(uint256 _amount, bytes memory _signature) public onlyPlayer {
+    function joinTableWithDepositAsPlayer(uint256 _amount, bytes memory _signature) public onlyGameIsStillOn onlyPlayer {
         _joinTableWithDeposit(_amount, _signature);
         emit PlayerJoined(msg.sender, _amount);
     }
@@ -324,7 +334,8 @@ contract TableGame {
     /**
      * @dev Host joins the table with some deposit.
      */
-    function joinTableWithDepositAsHost(uint256 _amount, bytes memory _signature) public onlyHost {
+    function joinTableWithDepositAsHost(uint256 _amount, bytes memory _signature) public onlyGameIsStillOn onlyHost {
+        _host = msg.sender;
         _joinTableWithDeposit(_amount, _signature);
         emit HostJoined(msg.sender, _amount);
     }
@@ -498,8 +509,8 @@ contract TableGameFactory{
     /**
      * @dev Creates a new table game instance with a tokenaddress.
      */
-    function createTableGame(address tokenAddress) public returns(address) {
-        TableGame game = new TableGame(tokenAddress, _owner, _beneficiary);
+    function createTableGame(address tokenAddress, uint hoursToCloseGame) public returns(address) {
+        TableGame game = new TableGame(tokenAddress, _owner, _beneficiary, hoursToCloseGame);
         emit TableGameCreated(address(game), msg.sender);
         return address(game);
     }
@@ -507,32 +518,32 @@ contract TableGameFactory{
     /**
      * @dev Creates a new table game instance with USDT token on ETH.
      */
-    function createTableGameUSDTOnETH() public returns(address) {
+    function createTableGameUSDTOnETH(uint hoursToCloseGame) public returns(address) {
         address USDT_On_ETH = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
-        return createTableGame(USDT_On_ETH);
+        return createTableGame(USDT_On_ETH, hoursToCloseGame);
     }
   
     /**
      * @dev Creates a new table game instance with USDC token on Goerli.
      */
-    function createTableGameUSDCOnGoerli() public returns(address) {
+    function createTableGameUSDCOnGoerli(uint hoursToCloseGame) public returns(address) {
         address USDC_On_Goerli = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
-        return createTableGame(USDC_On_Goerli);
+        return createTableGame(USDC_On_Goerli, hoursToCloseGame);
     }
 
     /**
      * @dev Creates a new table game instance with USDT token on BSC.
      */
-    function createTableGameUSDTOnBSC() public returns(address) {
+    function createTableGameUSDTOnBSC(uint hoursToCloseGame) public returns(address) {
         address USDT_On_BSC = 0x55d398326f99059fF775485246999027B3197955;
-        return createTableGame(USDT_On_BSC);
+        return createTableGame(USDT_On_BSC, hoursToCloseGame);
     }
 
     /**
      * @dev Creates a new table game instance with USDT token on BSC Testnet.
      */
-    function createTableGameUSDTOnBSCTestnet() public returns(address) {
+    function createTableGameUSDTOnBSCTestnet(uint hoursToCloseGame) public returns(address) {
         address USDT_On_BSC_Testnet = 0x7ef95a0FEE0Dd31b22626fA2e10Ee6A223F8a684;
-        return createTableGame(USDT_On_BSC_Testnet);
+        return createTableGame(USDT_On_BSC_Testnet, hoursToCloseGame);
     }
 }
