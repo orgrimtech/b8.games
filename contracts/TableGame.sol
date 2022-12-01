@@ -220,7 +220,8 @@ contract TableGame {
     address private _owner;
     address private _beneficiary;
     address private _host = address(0);
-    uint private _timeToCloseGame;
+    uint private _timeToCloseGame = 0;
+    uint private _hoursToCloseGame = 0;
     uint private _playerTotal = 0;
     uint256 private _tableBalance = 0;
     mapping(address => uint256) private _usersNonces;
@@ -229,8 +230,8 @@ contract TableGame {
     /**
      * @dev Throws if table is already closed.
      */
-    modifier onlyGameIsStillOn() {
-        require(_timeToCloseGame > block.timestamp, "Game: game is already closed.");
+    modifier onlyGameIsOn() {
+        require(_timeToCloseGame > block.timestamp, "Game: game is already closed or not opened yet.");
         _;
     }
 
@@ -307,13 +308,13 @@ contract TableGame {
         _token = tokenAddress;
         _owner = owner;
         _beneficiary = beneficiary;
-        _timeToCloseGame = block.timestamp + hoursToCloseGame * 1 hours + 10 seconds;
+        _hoursToCloseGame = hoursToCloseGame;
     }
 
     /**
      * @dev Someone joins table with some deposit.
      */
-    function _joinTableWithDeposit(uint256 _amount, bytes memory _signature) private {
+    function _joinTableWithDeposit(uint256 _amount, bytes memory _signature) private onlyGameIsOn {
         verifyServerHashAmount(_amount, "joinTableWithDeposit", _signature);
         IERC20(_token).transferFrom(msg.sender, address(this), _amount);
         if (_usersDeposits[msg.sender] == 0) {
@@ -326,7 +327,7 @@ contract TableGame {
     /**
      * @dev Player joins the table with some deposit.
      */
-    function joinTableWithDepositAsPlayer(uint256 _amount, bytes memory _signature) public onlyGameIsStillOn onlyPlayer {
+    function joinTableWithDepositAsPlayer(uint256 _amount, bytes memory _signature) public onlyPlayer {
         _joinTableWithDeposit(_amount, _signature);
         emit PlayerJoined(msg.sender, _amount);
     }
@@ -334,8 +335,11 @@ contract TableGame {
     /**
      * @dev Host joins the table with some deposit.
      */
-    function joinTableWithDepositAsHost(uint256 _amount, bytes memory _signature) public onlyGameIsStillOn onlyHost {
+    function joinTableWithDepositAsHost(uint256 _amount, bytes memory _signature) public onlyHost {
         _host = msg.sender;
+        if (_timeToCloseGame == 0) {
+            _timeToCloseGame = block.timestamp + _hoursToCloseGame * 1 hours + 10 seconds;
+        }
         _joinTableWithDeposit(_amount, _signature);
         emit HostJoined(msg.sender, _amount);
     }

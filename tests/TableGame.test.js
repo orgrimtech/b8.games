@@ -200,10 +200,6 @@ describe("TableGame", function () {
 
     it("Test: join table with insufficient allowance.", async function () {
       await verifyTableAmount(0);
-      await expect(
-        joinTableWithDepositAsPlayer(_host, 500)
-      ).to.be.revertedWith("ERC20: insufficient allowance");
-      await reduceSomeonesNonce(_host);
       await joinTableWithDepositAsHost(_host, 200);
       await verifyTableAmount(200);
       await expect(
@@ -225,7 +221,7 @@ describe("TableGame", function () {
       await verifyTableAmount(500);
     });
 
-   it("Test: checkout with insufficient remaining or profit.", async function () {
+    it("Test: checkout with insufficient remaining or profit.", async function () {
       await verifyTableAmount(0);
       await joinTableWithDepositAsHost(_host, 200);
       await verifyTableAmount(200);
@@ -251,7 +247,7 @@ describe("TableGame", function () {
       ).to.emit(_table, "TableClosed");
     });
 
-   it("Test: disallow to join table for some reason.", async function () {
+    it("Test: disallow to join table for some reason.", async function () {
       _defaultHoursToCloseGame = 0;
       _table = await createTableGame(_meso.address);
       await _meso.transfer(_host.address, 500);
@@ -261,6 +257,11 @@ describe("TableGame", function () {
       await _meso.connect(_player1).approve(_table.address, 200);
       await _meso.connect(_player2).approve(_table.address, 100);
       await verifyTableAmount(0);
+      await expect(
+        joinTableWithDepositAsPlayer(_player1, 100)
+      ).to.be.revertedWith("revert Game: game is already closed or not opened yet.");
+      await reduceSomeonesNonce(_player1);
+      await timeout(12);
       await joinTableWithDepositAsHost(_host, 200);
       await verifyTableAmount(200);
       await expect(
@@ -273,11 +274,11 @@ describe("TableGame", function () {
       await timeout(12);
       await expect(
         joinTableWithDepositAsPlayer(_player1, 200)
-      ).to.be.revertedWith("revert Game: game is already closed.");
+      ).to.be.revertedWith("revert Game: game is already closed or not opened yet.");
       await reduceSomeonesNonce(_player1);
       await expect(
         joinTableWithDepositAsPlayer(_player2, 100)
-      ).to.be.revertedWith("revert Game: game is already closed.");
+      ).to.be.revertedWith("revert Game: game is already closed or not opened yet.");
       await reduceSomeonesNonce(_player2);
       await checkOutWithSettlementAsPlayer(_player1, 100);
       await expect(
