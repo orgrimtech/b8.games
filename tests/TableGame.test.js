@@ -184,7 +184,6 @@ describe("TableGame", function () {
       await verifyTableAmount(100);
       await joinTableWithDepositAsPlayer(_player1, 200);
       await verifyTableAmount(300);
-      await verifyTableAmount(300);
       await joinTableWithDepositAsPlayer(_player2, 100);
       await verifyTableAmount(400);
       await checkOutWithSettlementAsPlayer(_player1, 50);
