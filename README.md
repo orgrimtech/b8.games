@@ -197,3 +197,12 @@
 | 类型 | 说明 |
 | ------------- | ------------- |
 | bool | 游戏合约是否已经有代理加入并质押了一定代币。 |
+
+## Bug历史记录：
+- 无效的服务端签名验证触发的事件。
+  - 删除了ServerHashValidationFailureHost事件，当检验发生错误的时候，合约会失败，并不会上链和触发事件，所有需要client端捕捉失败结果。
+  - 修复在[这里](https://github.com/sumer-meso/TableGame/commit/b90a2ffef2ac491411f8444ecf390247359329e3)。
+
+- 使用SafeERC20来处理所有的transfer。
+  - 当对ERC20代币进行转账的时候，应该使用safeTransfer和safeTransferFrom，保证更好的安全性。
+  - 修复在[这里](https://github.com/sumer-meso/TableGame/commit/b90a2ffef2ac491411f8444ecf390247359329e3)。
