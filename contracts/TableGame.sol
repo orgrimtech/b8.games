@@ -365,17 +365,8 @@ contract TableGame {
         _;
     }
 
-    /// @dev This event is fired when host joined table with certain amount of money.
-    event HostJoined(address indexed host, uint256 amount);
-
-    /// @dev This event is fired when a player joined table with certain amount of money.
-    event PlayerJoined(address indexed player, uint256 amount);
-
-    /// @dev This event is fired when a player checked out and settled with certain amount of money.
-    event PlayerCheckedOut(address indexed player, uint256 amount);
-
-    /// @dev This event is fired when host checked out and settled with certain amount of money and profits to the owner.
-    event HostCheckedOut(address indexed host, uint256 amount, uint256 profit);
+    /// @dev Emitted when a user state (joins or checkout) change.
+    event NonceChange(string func, address indexed table, address indexed addr, uint256 amount, bytes _signature);
 
     /// @dev This event is fired when all players checked out and certain amount of money settled to owner.
     event TableClosed(address indexed table, address indexed owner, uint256 amount);
@@ -408,7 +399,7 @@ contract TableGame {
      */
     function joinTableWithDepositAsPlayer(uint256 _amount, bytes memory _signature) public onlyPlayer {
         _joinTableWithDeposit(_amount, _signature);
-        emit PlayerJoined(msg.sender, _amount);
+        emit NonceChange("joinPlayer", address(this), msg.sender, _amount, _signature);
     }
 
     /**
@@ -420,7 +411,7 @@ contract TableGame {
             _timeToCloseGame = block.timestamp + _hoursToCloseGame * 1 hours + 10 seconds;
         }
         _joinTableWithDeposit(_amount, _signature);
-        emit HostJoined(msg.sender, _amount);
+        emit NonceChange("joinHost", address(this), msg.sender, _amount, _signature);
     }
 
     /**
@@ -447,7 +438,6 @@ contract TableGame {
         _tableBalance -= _amount;
         _playerTotal--;
         IERC20(_token).safeTransfer(msg.sender, _amount);
-        emit PlayerCheckedOut(msg.sender, _amount);
         _closeTableIfNessary();
     }
 
@@ -461,7 +451,6 @@ contract TableGame {
         _playerTotal--;
         IERC20(_token).safeTransfer(_beneficiary, _profit);
         IERC20(_token).safeTransfer(msg.sender, _amount);
-        emit HostCheckedOut(msg.sender, _amount, _profit);
         _closeTableIfNessary();
     }
 
@@ -471,6 +460,7 @@ contract TableGame {
     function checkOutWithSettlementAsPlayer(uint256 _amount, bytes memory _signature) public onlyOnTable onlyPlayer {
         verifyServerHashAmount(_amount, "checkOutWithSettlement", _signature);
         _checkOutWithSettlement(_amount);
+        emit NonceChange("outPlayer", address(this), msg.sender, _amount, _signature);
     }
 
     /**
@@ -479,6 +469,7 @@ contract TableGame {
     function checkOutWithSettlementAsHost(uint256 _amount, uint _profit, bytes memory _signature) public onlyOnTable onlyHost {
         verifyServerHashAmountProfit(_amount, _profit, "checkOutWithSettlement", _signature);
         _checkOutWithSettlementandProfit(_amount, _profit);
+        emit NonceChange("outHost", address(this), msg.sender, _amount, _signature);
     }
 
     /**
