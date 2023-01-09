@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-
 /**
  * @dev Address library helper to call low level functions.
  *      Copied from: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v4.8/contracts/utils/Address.sol
@@ -129,43 +128,43 @@ library Math {
 
     function log10(uint256 value) internal pure returns (uint256) {
         uint256 result = 0;
-        unchecked {
-            if (value >= 10**64) {
-                value /= 10**64;
-                result += 64;
-            }
-            if (value >= 10**32) {
-                value /= 10**32;
-                result += 32;
-            }
-            if (value >= 10**16) {
-                value /= 10**16;
-                result += 16;
-            }
-            if (value >= 10**8) {
-                value /= 10**8;
-                result += 8;
-            }
-            if (value >= 10**4) {
-                value /= 10**4;
-                result += 4;
-            }
-            if (value >= 10**2) {
-                value /= 10**2;
-                result += 2;
-            }
-            if (value >= 10**1) {
-                result += 1;
-            }
+    unchecked {
+        if (value >= 10**64) {
+            value /= 10**64;
+            result += 64;
         }
+        if (value >= 10**32) {
+            value /= 10**32;
+            result += 32;
+        }
+        if (value >= 10**16) {
+            value /= 10**16;
+            result += 16;
+        }
+        if (value >= 10**8) {
+            value /= 10**8;
+            result += 8;
+        }
+        if (value >= 10**4) {
+            value /= 10**4;
+            result += 4;
+        }
+        if (value >= 10**2) {
+            value /= 10**2;
+            result += 2;
+        }
+        if (value >= 10**1) {
+            result += 1;
+        }
+    }
         return result;
     }
 
     function log10(uint256 value, Rounding rounding) internal pure returns (uint256) {
-        unchecked {
-            uint256 result = log10(value);
-            return result + (rounding == Rounding.Up && 10**result < value ? 1 : 0);
-        }
+    unchecked {
+        uint256 result = log10(value);
+        return result + (rounding == Rounding.Up && 10**result < value ? 1 : 0);
+    }
     }
 }
 
@@ -179,25 +178,25 @@ library Strings {
     uint8 private constant _ADDRESS_LENGTH = 20;
 
     function toString(uint256 value) internal pure returns (string memory) {
-        unchecked {
-            uint256 length = Math.log10(value) + 1;
-            string memory buffer = new string(length);
-            uint256 ptr;
+    unchecked {
+        uint256 length = Math.log10(value) + 1;
+        string memory buffer = new string(length);
+        uint256 ptr;
+        /// @solidity memory-safe-assembly
+        assembly {
+            ptr := add(buffer, add(32, length))
+        }
+        while (true) {
+            ptr--;
             /// @solidity memory-safe-assembly
             assembly {
-                ptr := add(buffer, add(32, length))
+                mstore8(ptr, byte(mod(value, 10), _SYMBOLS))
             }
-            while (true) {
-                ptr--;
-                /// @solidity memory-safe-assembly
-                assembly {
-                    mstore8(ptr, byte(mod(value, 10), _SYMBOLS))
-                }
-                value /= 10;
-                if (value == 0) break;
-            }
-            return buffer;
+            value /= 10;
+            if (value == 0) break;
         }
+        return buffer;
+    }
     }
 
     function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
@@ -345,7 +344,7 @@ contract TableGame {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-       require(_owner == msg.sender, "Ownable: caller is not the owner.");
+        require(_owner == msg.sender, "Ownable: caller is not the owner.");
         _;
     }
 
@@ -353,7 +352,7 @@ contract TableGame {
      * @dev Throws if called by any account other than the table host or a potential host.
      */
     modifier onlyHost() {
-       require(_host == address(0) || _host == msg.sender, "Host: caller is not the host or a potential host.");
+        require(_host == address(0) || _host == msg.sender, "Host: caller is not the host or a potential host.");
         _;
     }
 
@@ -361,12 +360,12 @@ contract TableGame {
      * @dev Throws if called by any account other than the potential player.
      */
     modifier onlyPlayer() {
-       require(_host != msg.sender, "Player: caller is the host, not a player.");
+        require(_host != msg.sender, "Player: caller is the host, not a player.");
         _;
     }
 
     /// @dev Emitted when a user state (joins or checkout) change.
-    event NonceChange(string func, address indexed table, address indexed addr, uint256 amount, bytes _signature);
+    event NonceChange(string func, address indexed table, address addr, string amount, bytes _signature);
 
     /// @dev This event is fired when all players checked out and certain amount of money settled to owner.
     event TableClosed(address indexed table, address indexed owner, uint256 amount);
@@ -399,7 +398,7 @@ contract TableGame {
      */
     function joinTableWithDepositAsPlayer(uint256 _amount, bytes memory _signature) public onlyPlayer {
         _joinTableWithDeposit(_amount, _signature);
-        emit NonceChange("joinPlayer", address(this), msg.sender, _amount, _signature);
+        emit NonceChange("joinPlayer", address(this), msg.sender, Strings.toString(_amount), _signature);
     }
 
     /**
@@ -411,7 +410,7 @@ contract TableGame {
             _timeToCloseGame = block.timestamp + _hoursToCloseGame * 1 hours + 10 seconds;
         }
         _joinTableWithDeposit(_amount, _signature);
-        emit NonceChange("joinHost", address(this), msg.sender, _amount, _signature);
+        emit NonceChange("joinHost", address(this), msg.sender, Strings.toString(_amount), _signature);
     }
 
     /**
@@ -459,8 +458,8 @@ contract TableGame {
      */
     function checkOutWithSettlementAsPlayer(uint256 _amount, bytes memory _signature) public onlyOnTable onlyPlayer {
         verifyServerHashAmount(_amount, "checkOutWithSettlement", _signature);
+        emit NonceChange("outPlayer", address(this), msg.sender, Strings.toString(_amount), _signature);
         _checkOutWithSettlement(_amount);
-        emit NonceChange("outPlayer", address(this), msg.sender, _amount, _signature);
     }
 
     /**
@@ -468,8 +467,8 @@ contract TableGame {
      */
     function checkOutWithSettlementAsHost(uint256 _amount, uint _profit, bytes memory _signature) public onlyOnTable onlyHost {
         verifyServerHashAmountProfit(_amount, _profit, "checkOutWithSettlement", _signature);
+        emit NonceChange("outHost", address(this), msg.sender, Strings.toString(_amount), _signature);
         _checkOutWithSettlementandProfit(_amount, _profit);
-        emit NonceChange("outHost", address(this), msg.sender, _amount, _signature);
     }
 
     /**
@@ -500,12 +499,12 @@ contract TableGame {
         uint256 nonce = _usersNonces[msg.sender];
         _usersNonces[msg.sender] = nonce + 1;
         bytes memory encodedMessage = bytes(string(abi.encodePacked(
-            Strings.toHexString(address(this)),
-            Strings.toHexString(msg.sender),
-            Strings.toString(_amount),
-            _action,
-            Strings.toString(nonce)
-        )));
+                Strings.toHexString(address(this)),
+                Strings.toHexString(msg.sender),
+                Strings.toString(_amount),
+                _action,
+                Strings.toString(nonce)
+            )));
         return ECDSA.toEthSignedMessageHash(encodedMessage);
     }
 
@@ -516,13 +515,13 @@ contract TableGame {
         uint256 nonce = _usersNonces[msg.sender];
         _usersNonces[msg.sender] = nonce + 1;
         bytes memory encodedMessage = bytes(string(abi.encodePacked(
-            Strings.toHexString(address(this)),
-            Strings.toHexString(msg.sender),
-            Strings.toString(_amount),
-            Strings.toString(_profit),
-            _action,
-            Strings.toString(nonce)
-        )));
+                Strings.toHexString(address(this)),
+                Strings.toHexString(msg.sender),
+                Strings.toString(_amount),
+                Strings.toString(_profit),
+                _action,
+                Strings.toString(nonce)
+            )));
         return ECDSA.toEthSignedMessageHash(encodedMessage);
     }
 
@@ -581,7 +580,7 @@ contract TableGameFactory{
         address USDT_On_ETH = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
         return createTableGame(USDT_On_ETH, hoursToCloseGame);
     }
-  
+
     /**
      * @dev Creates a new table game instance with USDC token on Goerli.
      */
