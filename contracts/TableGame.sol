@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+
 /**
  * @dev Address library helper to call low level functions.
  *      Copied from: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v4.8/contracts/utils/Address.sol
@@ -128,43 +129,43 @@ library Math {
 
     function log10(uint256 value) internal pure returns (uint256) {
         uint256 result = 0;
-    unchecked {
-        if (value >= 10**64) {
-            value /= 10**64;
-            result += 64;
+        unchecked {
+            if (value >= 10**64) {
+                value /= 10**64;
+                result += 64;
+            }
+            if (value >= 10**32) {
+                value /= 10**32;
+                result += 32;
+            }
+            if (value >= 10**16) {
+                value /= 10**16;
+                result += 16;
+            }
+            if (value >= 10**8) {
+                value /= 10**8;
+                result += 8;
+            }
+            if (value >= 10**4) {
+                value /= 10**4;
+                result += 4;
+            }
+            if (value >= 10**2) {
+                value /= 10**2;
+                result += 2;
+            }
+            if (value >= 10**1) {
+                result += 1;
+            }
         }
-        if (value >= 10**32) {
-            value /= 10**32;
-            result += 32;
-        }
-        if (value >= 10**16) {
-            value /= 10**16;
-            result += 16;
-        }
-        if (value >= 10**8) {
-            value /= 10**8;
-            result += 8;
-        }
-        if (value >= 10**4) {
-            value /= 10**4;
-            result += 4;
-        }
-        if (value >= 10**2) {
-            value /= 10**2;
-            result += 2;
-        }
-        if (value >= 10**1) {
-            result += 1;
-        }
-    }
         return result;
     }
 
     function log10(uint256 value, Rounding rounding) internal pure returns (uint256) {
-    unchecked {
-        uint256 result = log10(value);
-        return result + (rounding == Rounding.Up && 10**result < value ? 1 : 0);
-    }
+        unchecked {
+            uint256 result = log10(value);
+            return result + (rounding == Rounding.Up && 10**result < value ? 1 : 0);
+        }
     }
 }
 
@@ -178,25 +179,25 @@ library Strings {
     uint8 private constant _ADDRESS_LENGTH = 20;
 
     function toString(uint256 value) internal pure returns (string memory) {
-    unchecked {
-        uint256 length = Math.log10(value) + 1;
-        string memory buffer = new string(length);
-        uint256 ptr;
-        /// @solidity memory-safe-assembly
-        assembly {
-            ptr := add(buffer, add(32, length))
-        }
-        while (true) {
-            ptr--;
+        unchecked {
+            uint256 length = Math.log10(value) + 1;
+            string memory buffer = new string(length);
+            uint256 ptr;
             /// @solidity memory-safe-assembly
             assembly {
-                mstore8(ptr, byte(mod(value, 10), _SYMBOLS))
+                ptr := add(buffer, add(32, length))
             }
-            value /= 10;
-            if (value == 0) break;
+            while (true) {
+                ptr--;
+                /// @solidity memory-safe-assembly
+                assembly {
+                    mstore8(ptr, byte(mod(value, 10), _SYMBOLS))
+                }
+                value /= 10;
+                if (value == 0) break;
+            }
+            return buffer;
         }
-        return buffer;
-    }
     }
 
     function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
@@ -499,12 +500,12 @@ contract TableGame {
         uint256 nonce = _usersNonces[msg.sender];
         _usersNonces[msg.sender] = nonce + 1;
         bytes memory encodedMessage = bytes(string(abi.encodePacked(
-                Strings.toHexString(address(this)),
-                Strings.toHexString(msg.sender),
-                Strings.toString(_amount),
-                _action,
-                Strings.toString(nonce)
-            )));
+            Strings.toHexString(address(this)),
+            Strings.toHexString(msg.sender),
+            Strings.toString(_amount),
+            _action,
+            Strings.toString(nonce)
+        )));
         return ECDSA.toEthSignedMessageHash(encodedMessage);
     }
 
@@ -515,13 +516,13 @@ contract TableGame {
         uint256 nonce = _usersNonces[msg.sender];
         _usersNonces[msg.sender] = nonce + 1;
         bytes memory encodedMessage = bytes(string(abi.encodePacked(
-                Strings.toHexString(address(this)),
-                Strings.toHexString(msg.sender),
-                Strings.toString(_amount),
-                Strings.toString(_profit),
-                _action,
-                Strings.toString(nonce)
-            )));
+            Strings.toHexString(address(this)),
+            Strings.toHexString(msg.sender),
+            Strings.toString(_amount),
+            Strings.toString(_profit),
+            _action,
+            Strings.toString(nonce)
+        )));
         return ECDSA.toEthSignedMessageHash(encodedMessage);
     }
 
